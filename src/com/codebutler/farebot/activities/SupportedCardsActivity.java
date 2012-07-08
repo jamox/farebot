@@ -68,6 +68,7 @@ public class SupportedCardsActivity extends Activity {
             add(new CardInfo(R.drawable.suica_card,   "Suica",   "Tokyo, Japan"));
             add(new CardInfo(R.drawable.pasmo_card,   "PASMO",   "Tokyo, Japan"));
             add(new CardInfo(R.drawable.icoca_card,   "ICOCA",   "Kansai, Japan"));
+            add(new CardInfo(R.drawable.hsl_card, "HSL", "Helsinki, Finland"));
         }
         
         @Override
