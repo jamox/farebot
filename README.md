@@ -26,6 +26,7 @@ View your remaining balance, recent trips, and other information from contactles
 * [Clipper][1] - San Francisco, CA, USA
 * [EZ-Link][7] - Singapore
 * [Suica][9], [ICOCA][10], [PASMO][11] - Japan
+* [Matkakortti][16], [HSL][17] - Finland
 
 ## Supported Phones
 
@@ -50,3 +51,5 @@ FareBot uses the NFC hardware available in these phones running Android 4.0 or l
 [13]: http://code.google.com/p/nfc-felica/
 [14]: http://www014.upp.so-net.ne.jp/SFCardFan/
 [15]: http://www.thenounproject.com/
+[16]: http://www.hsl.fi/EN/passengersguide/travelcard/Pages/default.aspx
+[17]: httå://www.hsl.fi/EN/
