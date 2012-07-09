@@ -33,6 +33,7 @@ FareBot uses the NFC hardware available in these phones running Android 4.0 or l
 
 * Nexus S
 * Galaxy Nexus
+* Samsung i9300
 
 [0]: http://www.orcacard.com/
 [1]: https://www.clippercard.com/
