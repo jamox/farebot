@@ -52,4 +52,4 @@ FareBot uses the NFC hardware available in these phones running Android 4.0 or l
 [14]: http://www014.upp.so-net.ne.jp/SFCardFan/
 [15]: http://www.thenounproject.com/
 [16]: http://www.hsl.fi/EN/passengersguide/travelcard/Pages/default.aspx
-[17]: httå://www.hsl.fi/EN/
+[17]: http://www.hsl.fi/EN/
