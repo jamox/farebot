@@ -56,7 +56,10 @@ public class HSLTransitData extends TransitData
     private String        mSerialNumber;
     private double     mBalance;
     private HSLTrip[] mTrips;
+    private boolean mHasKausi;
 
+    private static final long EPOCH = 0x32C97ED0;
+    
     public static boolean check (Card card)
     {
         return (card instanceof DesfireCard) && (((DesfireCard) card).getApplication(0x1120ef) != null);
@@ -79,7 +82,22 @@ public class HSLTransitData extends TransitData
         mTrips = new HSLTrip[parcel.readInt()];
         parcel.readTypedArray(mTrips, HSLTrip.CREATOR);
     }
-    
+    public static long bitsToLong(int start, int len, byte[] data){
+    	long ret=0;
+    	for(int i=start;i<start+len;++i){
+    		long bit=((data[i/8] >> (7 - i%8)) & 1);
+    		ret = ret | (bit << ((start+len-1)-i));
+    	}
+    	return ret;
+    }
+    public static long bitsToLong(int start, int len, long[] data){
+    	long ret=0;
+    	for(int i=start;i<start+len;++i){
+    		long bit=((data[i/8] >> (7 - i%8)) & 1);
+    		ret = ret | (bit << ((start+len-1)-i));
+    	}
+    	return ret;
+    }
     public HSLTransitData (Card card)
     {
         DesfireCard desfireCard = (DesfireCard) card;
@@ -95,13 +113,19 @@ public class HSLTransitData extends TransitData
 
         try {
             data = desfireCard.getApplication(0x1120ef).getFile(0x02).getData();
-            mBalance = Utils.byteArrayToInt(data, 0, 3) >> 4;
+            mBalance = bitsToLong(0,20,data);
         } catch (Exception ex) {
             throw new RuntimeException("Error parsing HSL balance", ex);
         }
 
         try {
             mTrips = parseTrips(desfireCard);
+        } catch (Exception ex) {
+            throw new RuntimeException("Error parsing HSL trips", ex);
+        }
+        try {
+        	data = desfireCard.getApplication(0x1120ef).getFile(0x01).getData();
+            mHasKausi = bitsToLong(33,14,data) > ((System.currentTimeMillis()/1000 - EPOCH) / (60*60*24));
         } catch (Exception ex) {
             throw new RuntimeException("Error parsing HSL trips", ex);
         }
@@ -114,7 +138,10 @@ public class HSLTransitData extends TransitData
 
     @Override
     public String getBalanceString () {
-        return NumberFormat.getCurrencyInstance(Locale.GERMANY).format(mBalance / 100);
+    	String ret =  NumberFormat.getCurrencyInstance(Locale.GERMANY).format(mBalance / 100);
+    	if(mHasKausi)
+    		ret +="\nkautta 31.8.2012 asti";
+        return ret;
     }
 
     @Override
@@ -173,31 +200,10 @@ public class HSLTransitData extends TransitData
         private final long mNewBalance;
         private final long mAgency;
         private final long mTransType;
+        private final long mArvo;
 
-        private static Station[] sLinkStations = new Station[] {
-            new Station("Westlake Station",                   "Westlake",      "47.6113968", "-122.337502"),
-            new Station("University Station",                 "University",    "47.6072502", "-122.335754"),
-            new Station("Pioneer Square Station",             "Pioneer Sq",    "47.6021461", "-122.33107"),
-            new Station("International District Station",     "ID",            "47.5976601", "-122.328217"),
-            new Station("Stadium Station",                    "Stadium",       "47.5918121", "-122.327354"),
-            new Station("SODO Station",                       "SODO",          "47.5799484", "-122.327515"),
-            new Station("Beacon Hill Station",                "Beacon Hill",   "47.5791245", "-122.311287"),
-            new Station("Mount Baker Station",                "Mount Baker",   "47.5764389", "-122.297737"),
-            new Station("Columbia City Station",              "Columbia City", "47.5589523", "-122.292343"),
-            new Station("Othello Station",                    "Othello",       "47.5375366", "-122.281471"),
-            new Station("Rainier Beach Station",              "Rainier Beach", "47.5222626", "-122.279579"),
-            new Station("Tukwila International Blvd Station", "Tukwila",       "47.4642754", "-122.288391"),
-            new Station("Seatac Airport Station",             "Sea-Tac",       "47.4445305", "-122.297012")
-        };
         
-        public long bitsToLong(int start, long[] data){
-        	long ret=0;
-        	for(int i=start;i<start+32;++i){
-        		long bit=((data[i/8] >> (7 - i%8)) & 1);
-        		ret = ret | (bit << ((start+32)-i));
-        	}
-        	return ret;
-        }
+
         
         public HSLTrip (DesfireRecord record)
         {
@@ -208,40 +214,21 @@ public class HSLTransitData extends TransitData
                 usefulData[i] = ((long)useData[i]) & 0xFF;
             }
     
-         /*   mTimestamp =
-                ((0x0F & usefulData[0]) << 28) |
-                (usefulData[1] << 20) |
-                (usefulData[2] << 12) |
-                (usefulData[3] << 4)  |
-                (usefulData[4] >> 4); */
             
-            long day =((usefulData[3] & 0x0F) << 8) |
-            		  (usefulData[4]);
+            long day = bitsToLong(1, 14, usefulData);
             
-         //   long secs = 
+            long minutes = bitsToLong(15,11,usefulData); 
             
-            mTimestamp = (1205989200) + day * (60*60*24);
-            
-            /*mTimestamp = //bitsToLong(0,usefulData) / 4;
-                   // (((usefulData[0]) << 24) |
-                    (usefulData[1] << 16) |
-                    (usefulData[2] << 8) |
-                    (usefulData[3] << 0); //|
-                    //(usefulData[4] );
-            */
+            mTimestamp = (EPOCH) + day * (60*60*24) + minutes * 60;
     
-            mCoachNum = ((usefulData[9] & 0xf) << 12) | (usefulData[10] << 4) | ((usefulData[11] & 0xf0) >> 4);
+            mCoachNum = bitsToLong(79,10,usefulData);
 
-            /*if (usefulData[15] == 0x00 || usefulData[15] == 0xFF) {
-                // FIXME: This appears to be some sort of special case for transfers and passes.
-                mFare = 0;
-            } else {
-                mFare = (usefulData[15] << 7) | (usefulData[16] >> 1);
-            }
-			
-            mNewBalance = (usefulData[34] << 8) | usefulData[35];*/
-            mFare=mNewBalance=mTransType=0;
-            mAgency     = usefulData[3] >> 4;
+            mFare= bitsToLong(51,14,usefulData); 
+            		
+            mNewBalance=mTransType=0;
+            mAgency     = bitsToLong(51,7,usefulData);
+            
+            mArvo = bitsToLong(0,1,usefulData);
             //mTransType  = (usefulData[17]);
         }
         
@@ -263,6 +250,7 @@ public class HSLTransitData extends TransitData
             mNewBalance = parcel.readLong();
             mAgency     = parcel.readLong();
             mTransType  = parcel.readLong();
+            mArvo  		= parcel.readLong();
         }
 
         @Override
@@ -289,7 +277,7 @@ public class HSLTransitData extends TransitData
         public String getShortAgencyName () {
             switch ((int) mAgency) {
                 case AGENCY_CT:
-                    return "CT";
+                    return "Espoosta ostettu";
                 case AGENCY_KCM:
                     return "KCM";
                 case AGENCY_PT:
@@ -297,22 +285,15 @@ public class HSLTransitData extends TransitData
                 case AGENCY_ST:
                     return "ST";
             }
-            return "Unknown";
+            return "Helsingistä ostettu";
         }
 
         @Override
         public String getRouteName () {
-            if (isLink()) {
-                return "Link Light Rail";
-            } else {
-                // FIXME: Need to find bus route #s
-                if (mAgency == AGENCY_ST) {
-                    return "Express Bus";
-                } else if(mAgency == AGENCY_KCM) {
-                    return "Bus";
-                }
-                return null;
-            }
+            if(mArvo==1)
+            	return "Arvolippu";
+            else
+           		return "Kausilippu";
         }
 
         @Override
@@ -330,22 +311,7 @@ public class HSLTransitData extends TransitData
             return NumberFormat.getCurrencyInstance(Locale.GERMANY).format(mNewBalance / 100);
         }
 
-        @Override
-        public Station getStartStation() {
-            if (isLink()) {
-                return sLinkStations[(((int) mCoachNum) % 1000) - 193];
-            }
-            return null;
-        }
 
-        @Override
-        public String getStartStationName () {
-            if (isLink()) {
-                return sLinkStations[(((int) mCoachNum) % 1000) - 193].getStationName();
-            } else {
-                return "Coach #" + String.valueOf(mCoachNum);
-            }
-        }
 
         @Override
         public String getEndStationName () {
@@ -376,6 +342,7 @@ public class HSLTransitData extends TransitData
             parcel.writeLong(mNewBalance);
             parcel.writeLong(mAgency);
             parcel.writeLong(mTransType);
+            parcel.writeLong(mArvo);
         }
 
         public int describeContents() {
@@ -385,5 +352,17 @@ public class HSLTransitData extends TransitData
         private boolean isLink () {
             return (mAgency == HSLTransitData.AGENCY_ST && mCoachNum > 10000);
         }
+
+		@Override
+		public String getStartStationName() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public Station getStartStation() {
+			// TODO Auto-generated method stub
+			return null;
+		}
     }
 }
