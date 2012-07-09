@@ -25,7 +25,11 @@
 
 package com.codebutler.farebot.transit;
 
+import android.content.Context;
 import android.os.Parcel;
+
+import com.codebutler.farebot.FareBotApplication;
+import com.codebutler.farebot.R;
 import com.codebutler.farebot.Utils;
 import com.codebutler.farebot.mifare.Card;
 import com.codebutler.farebot.mifare.DesfireCard;
@@ -157,19 +161,27 @@ public class HSLTransitData extends TransitData
     public String getBalanceString () {
     	String ret =  NumberFormat.getCurrencyInstance(Locale.GERMANY).format(mBalance / 100);
     	if(mHasKausi)
-    		ret +="\nkautta 31.8.2012 asti";
-        return ret;
+    		ret +="\n" + FareBotApplication.getInstance().getResources().getText(R.string.hsl_pass_is_valid);
+        return ret; 
+    }
+    private String GR(int r){
+    	 return FareBotApplication.getInstance().getResources().getText(r).toString();
     }
     @Override
     public String getCustomString () {
     	StringBuilder ret = new StringBuilder();
     	if(!mKausiNoData){
-    		ret.append("Current Pass starts: ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiStart*1000.0));
-	    	ret.append("\nCurrent Pass ends: ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiEnd*1000.0)); 
-	    	ret.append("\n\nPass bought on ").append(SimpleDateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(mKausiPurchase*1000.0));
-	    	ret.append(" for ").append(NumberFormat.getCurrencyInstance(Locale.GERMANY).format(mKausiPurchasePrice / 100.0));
-	    	ret.append("\nYou last used this pass on ").append(SimpleDateFormat.getDateTimeInstance(DateFormat.LONG,DateFormat.SHORT).format(mKausiLastUse*1000.0));
-	    	ret.append("\n\nPrevious kausi was: ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiPrevStart*1000.0));
+    		ret.append(GR(R.string.hsl_season_ticket_starts)).append(": ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiStart*1000.0));
+	    	ret.append("\n");
+	    	ret.append(GR(R.string.hsl_season_ticket_ends)).append(": ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiEnd*1000.0)); 
+	    	ret.append("\n\n");
+	    	ret.append(GR(R.string.hsl_season_ticket_bought_on)).append(": ").append(SimpleDateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(mKausiPurchase*1000.0));
+	    	ret.append("\n");
+	    	ret.append(GR(R.string.hsl_season_ticket_price_was)).append(": ").append(NumberFormat.getCurrencyInstance(Locale.GERMANY).format(mKausiPurchasePrice / 100.0));
+	    	ret.append("\n");
+	    	ret.append(GR(R.string.hsl_you_last_used_this_ticket)).append(": ").append(SimpleDateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(mKausiLastUse*1000.0));
+	    	ret.append("\n");
+	    	ret.append(GR(R.string.hsl_previous_season_ticket)).append(": ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiPrevStart*1000.0));
 	    	ret.append(" - ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiPrevEnd*1000.0));
     	}else
     		return null;
@@ -247,12 +259,12 @@ public class HSLTransitData extends TransitData
 
 		@Override
 		public String getAgencyName() {
-			return "Arvon lataus";
+			return FareBotApplication.getInstance().getResources().getText(R.string.hsl_balance_refill).toString(); //"Arvon lataus";
 		}
 
 		@Override
 		public String getShortAgencyName() {
-			return "Arvon lataus";
+			return FareBotApplication.getInstance().getResources().getText(R.string.hsl_balance_refill).toString();
 		}
 
 		@Override
@@ -334,24 +346,28 @@ public class HSLTransitData extends TransitData
 
         @Override
         public String getAgencyName () {
+        	if(mArvo!=1)
+        		return null;
             if(mAgency==1)
-                return "Seutulippu";
-            return "Sisäinen lippu";
+                return FareBotApplication.getInstance().getResources().getText(R.string.hsl_2zone_ticket).toString();
+            return FareBotApplication.getInstance().getResources().getText(R.string.hsl_1zone_ticket).toString();
         }
 
         @Override
         public String getShortAgencyName () {
+        	if(mArvo!=1)
+        		return null;
            if(mAgency==1)
-                    return "Seutulippu";
-            return "Sisäinen lippu";
+        	   return FareBotApplication.getInstance().getResources().getText(R.string.hsl_2zone_ticket).toString();
+           return FareBotApplication.getInstance().getResources().getText(R.string.hsl_1zone_ticket).toString();
         }
 
         @Override
         public String getRouteName () {
             if(mArvo==1)
-            	return "Arvolla";
+            	return FareBotApplication.getInstance().getResources().getText(R.string.hsl_balance_ticket).toString();
             else
-           		return "Kaudella";
+           		return FareBotApplication.getInstance().getResources().getText(R.string.hsl_pass_ticket).toString();
         }
 
         @Override
