@@ -116,6 +116,7 @@
     <string name="hsl_2zone_ticket">Regional ticket</string>
     <string name="hsl_balance_refill">Balance refill</string>
     <string name="hsl_balance_ticket">Value ticket</string>
+    <string name="hsl_value_ticket_is_valid">Valid value ticket</string>
     <string name="hsl_pass_ticket">Season ticket</string>
     <string name="hsl_season_ticket_starts">Season ticket starts</string>
     <string name="hsl_season_ticket_ends">Season ticket ends</string>

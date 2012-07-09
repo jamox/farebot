@@ -161,10 +161,13 @@ public class HSLTransitData extends TransitData
     public String getBalanceString () {
     	String ret =  NumberFormat.getCurrencyInstance(Locale.GERMANY).format(mBalance / 100);
     	if(mHasKausi)
-    		ret +="\n" + FareBotApplication.getInstance().getResources().getText(R.string.hsl_pass_is_valid);
+    		ret +="\n" + GR(R.string.hsl_pass_is_valid);
+    	for(HSLTrip t:mTrips)
+    		if(t.getExpireTimestamp()* 1000.0 > System.currentTimeMillis())
+    			ret += "\n" + GR(R.string.hsl_value_ticket_is_valid) + "!";
         return ret; 
     }
-    private String GR(int r){
+    private static String GR(int r){
     	 return FareBotApplication.getInstance().getResources().getText(r).toString();
     }
     @Override
@@ -259,12 +262,12 @@ public class HSLTransitData extends TransitData
 
 		@Override
 		public String getAgencyName() {
-			return FareBotApplication.getInstance().getResources().getText(R.string.hsl_balance_refill).toString(); //"Arvon lataus";
+			return GR(R.string.hsl_balance_refill);
 		}
 
 		@Override
 		public String getShortAgencyName() {
-			return FareBotApplication.getInstance().getResources().getText(R.string.hsl_balance_refill).toString();
+			return GR(R.string.hsl_balance_refill);
 		}
 
 		@Override
@@ -287,6 +290,7 @@ public class HSLTransitData extends TransitData
         private final long mAgency;
         private final long mTransType;
         private final long mArvo;
+		private long mExpireTimestamp;
 
         
 
@@ -301,12 +305,9 @@ public class HSLTransitData extends TransitData
             }
     
             
-            long day = bitsToLong(1, 14, usefulData);
+            mTimestamp = CardDateToTimestamp(bitsToLong(1, 14, usefulData), bitsToLong(15,11,usefulData));
+            mExpireTimestamp = CardDateToTimestamp(bitsToLong(26,14,usefulData),bitsToLong(40,11,usefulData));
             
-            long minutes = bitsToLong(15,11,usefulData); 
-            
-            mTimestamp = CardDateToTimestamp(day,minutes);
-    
             mCoachNum = bitsToLong(79,10,usefulData);
 
             mFare= bitsToLong(51,14,usefulData); 
@@ -318,7 +319,11 @@ public class HSLTransitData extends TransitData
             //mTransType  = (usefulData[17]);
         }
         
-        public static Creator<HSLTrip> CREATOR = new Creator<HSLTrip>() {
+        public double getExpireTimestamp() {
+			return this.mExpireTimestamp;
+		}
+
+		public static Creator<HSLTrip> CREATOR = new Creator<HSLTrip>() {
             public HSLTrip createFromParcel(Parcel parcel) {
                 return new HSLTrip(parcel);
             }
@@ -348,26 +353,23 @@ public class HSLTransitData extends TransitData
         public String getAgencyName () {
         	if(mArvo!=1)
         		return null;
+        	String valid = "\nvalid for " + ((this.mExpireTimestamp - this.mTimestamp) / 60) + "min";
             if(mAgency==1)
-                return FareBotApplication.getInstance().getResources().getText(R.string.hsl_2zone_ticket).toString();
-            return FareBotApplication.getInstance().getResources().getText(R.string.hsl_1zone_ticket).toString();
+                return GR(R.string.hsl_2zone_ticket) + valid;
+            return GR(R.string.hsl_1zone_ticket) + valid;
         }
 
         @Override
         public String getShortAgencyName () {
-        	if(mArvo!=1)
-        		return null;
-           if(mAgency==1)
-        	   return FareBotApplication.getInstance().getResources().getText(R.string.hsl_2zone_ticket).toString();
-           return FareBotApplication.getInstance().getResources().getText(R.string.hsl_1zone_ticket).toString();
+        	return getAgencyName();
         }
 
         @Override
         public String getRouteName () {
             if(mArvo==1)
-            	return FareBotApplication.getInstance().getResources().getText(R.string.hsl_balance_ticket).toString();
+            	return GR(R.string.hsl_balance_ticket);
             else
-           		return FareBotApplication.getInstance().getResources().getText(R.string.hsl_pass_ticket).toString();
+           		return GR(R.string.hsl_pass_ticket);
         }
 
         @Override

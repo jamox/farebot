@@ -116,6 +116,7 @@
     <string name="hsl_2zone_ticket">Seutulippu</string>
     <string name="hsl_balance_refill">Arvon lataus</string>
     <string name="hsl_balance_ticket">Arvolippu</string>
+    <string name="hsl_value_ticket_is_valid">Arvolippu voimassa</string>
     <string name="hsl_pass_ticket">Kausilippu</string>
     <string name="hsl_season_ticket_starts">Kausi alkaa</string>
     <string name="hsl_season_ticket_ends">Kausi loppuu</string>
