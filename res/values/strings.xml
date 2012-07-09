@@ -38,6 +38,7 @@
     <string name="history">History</string>
     <string name="balance">Balance</string>
     <string name="refills">Refills</string>
+    <string name="custom_data">Custom card data</string>
     <string name="no_trip_data">No trips found. Has this card been used?</string>
     <string name="no_refill_data">No refills found. Has this card only been used with a pass?</string>
     <string name="import_xml">Import</string>

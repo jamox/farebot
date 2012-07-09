@@ -30,6 +30,7 @@ public abstract class TransitData implements Parcelable {
     public abstract Trip[] getTrips ();
     public abstract Refill[] getRefills ();
     public abstract String getCardName ();
+    public abstract String getCustomString();
 
     public final int describeContents() {
         return 0;

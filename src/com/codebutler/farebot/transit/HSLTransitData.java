@@ -33,7 +33,9 @@ import com.codebutler.farebot.mifare.DesfireFile;
 import com.codebutler.farebot.mifare.DesfireFile.RecordDesfireFile;
 import com.codebutler.farebot.mifare.DesfireRecord;
 
+import java.text.DateFormat;
 import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -41,22 +43,23 @@ import java.util.Locale;
 
 public class HSLTransitData extends TransitData
 {
-    private static final int AGENCY_KCM = 0x04;
-    private static final int AGENCY_PT  = 0x06;
-    private static final int AGENCY_ST  = 0x07;
-    private static final int AGENCY_CT  = 0x02;
-
-    // For future use.
-    private static final int TRANS_TYPE_PURSE_USE   = 0x0c;
-    private static final int TRANS_TYPE_CANCEL_TRIP = 0x01;
-    private static final int TRANS_TYPE_TAP_IN      = 0x03;
-    private static final int TRANS_TYPE_TAP_OUT     = 0x07;
-    private static final int TRANS_TYPE_PASS_USE    = 0x60;
 
     private String        mSerialNumber;
     private double     mBalance;
     private HSLTrip[] mTrips;
     private boolean mHasKausi;
+	private long mKausiStart;
+	private long mKausiEnd;
+	private long mKausiPrevStart;
+	private long mKausiPrevEnd;
+	private long mKausiPurchasePrice;
+	private long mKausiLastUse;
+	private long mKausiPurchase;
+	private long mLastRefillTime;
+	private HSLRefill mLastRefill;
+	
+	private boolean mKausiNoData;
+	private long mLastRefillAmount;
 
     private static final long EPOCH = 0x32C97ED0;
     
@@ -114,6 +117,7 @@ public class HSLTransitData extends TransitData
         try {
             data = desfireCard.getApplication(0x1120ef).getFile(0x02).getData();
             mBalance = bitsToLong(0,20,data);
+            mLastRefill = new HSLRefill(data);
         } catch (Exception ex) {
             throw new RuntimeException("Error parsing HSL balance", ex);
         }
@@ -126,12 +130,25 @@ public class HSLTransitData extends TransitData
         try {
         	data = desfireCard.getApplication(0x1120ef).getFile(0x01).getData();
             mHasKausi = bitsToLong(33,14,data) > ((System.currentTimeMillis()/1000 - EPOCH) / (60*60*24));
+            if(bitsToLong(19,14,data)==0)
+            	mKausiNoData = true;
+            mKausiStart = CardDateToTimestamp(bitsToLong(19,14,data),0);
+            mKausiEnd = CardDateToTimestamp(bitsToLong(33,14,data),0);
+            mKausiPrevStart = CardDateToTimestamp(bitsToLong(67,14,data),0);
+            mKausiPrevEnd = CardDateToTimestamp(bitsToLong(81,14,data),0);
+            mKausiPurchase = CardDateToTimestamp(bitsToLong(110,14,data),bitsToLong(124,11,data));
+            mKausiPurchasePrice = bitsToLong(149,15,data);
+            mKausiLastUse = CardDateToTimestamp(bitsToLong(192,14,data),bitsToLong(206,11,data));
         } catch (Exception ex) {
-            throw new RuntimeException("Error parsing HSL trips", ex);
+            throw new RuntimeException("Error parsing HSL kausi data", ex);
         }
     }
 
-    @Override
+    public static long CardDateToTimestamp(long day, long minute) {
+    	return (EPOCH) + day * (60*60*24) + minute * 60;
+	}
+
+	@Override
     public String getCardName () {
         return "HSL";
     }
@@ -143,7 +160,21 @@ public class HSLTransitData extends TransitData
     		ret +="\nkautta 31.8.2012 asti";
         return ret;
     }
-
+    @Override
+    public String getCustomString () {
+    	StringBuilder ret = new StringBuilder();
+    	if(!mKausiNoData){
+    		ret.append("Current Pass starts: ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiStart*1000.0));
+	    	ret.append("\nCurrent Pass ends: ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiEnd*1000.0)); 
+	    	ret.append("\n\nPass bought on ").append(SimpleDateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(mKausiPurchase*1000.0));
+	    	ret.append(" for ").append(NumberFormat.getCurrencyInstance(Locale.GERMANY).format(mKausiPurchasePrice / 100.0));
+	    	ret.append("\nYou last used this pass on ").append(SimpleDateFormat.getDateTimeInstance(DateFormat.LONG,DateFormat.SHORT).format(mKausiLastUse*1000.0));
+	    	ret.append("\n\nPrevious kausi was: ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiPrevStart*1000.0));
+	    	ret.append(" - ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiPrevEnd*1000.0));
+    	}else
+    		return null;
+    	return ret.toString();
+    }
     @Override
     public String getSerialNumber () {
         return mSerialNumber;
@@ -156,7 +187,8 @@ public class HSLTransitData extends TransitData
 
     @Override
     public Refill[] getRefills () {
-        return null;
+    	Refill[] ret ={mLastRefill};
+        return ret;
     }
 
     private HSLTrip[] parseTrips (DesfireCard card)
@@ -191,7 +223,49 @@ public class HSLTransitData extends TransitData
             parcel.writeInt(0);
         }
     }
+    public static class HSLRefill extends Refill {
+    	private final long mRefillTime;
+    	private final long mRefillAmount;
+    	public HSLRefill(byte[] data) {
+            mRefillTime = CardDateToTimestamp(bitsToLong(20,14,data),bitsToLong(34,11,data));
+            mRefillAmount = bitsToLong(45,20,data);
+    	}
+        public HSLRefill (Parcel parcel) {
+            mRefillTime = parcel.readLong();
+            mRefillAmount = parcel.readLong();
+        }
+    	
+		public void writeToParcel(Parcel dest, int flags) {
+	        dest.writeLong(mRefillTime);
+	        dest.writeLong(mRefillAmount);
+		}
 
+		@Override
+		public long getTimestamp() {
+			return mRefillTime;
+		}
+
+		@Override
+		public String getAgencyName() {
+			return "Arvon lataus";
+		}
+
+		@Override
+		public String getShortAgencyName() {
+			return "Arvon lataus";
+		}
+
+		@Override
+		public long getAmount() {
+			return mRefillAmount;
+		}
+
+		@Override
+		public String getAmountString() {
+			return NumberFormat.getCurrencyInstance(Locale.GERMANY).format(mRefillAmount / 100.0);
+		}
+    	
+    }
     public static class HSLTrip extends Trip
     {
         private final long mTimestamp;
@@ -219,7 +293,7 @@ public class HSLTransitData extends TransitData
             
             long minutes = bitsToLong(15,11,usefulData); 
             
-            mTimestamp = (EPOCH) + day * (60*60*24) + minutes * 60;
+            mTimestamp = CardDateToTimestamp(day,minutes);
     
             mCoachNum = bitsToLong(79,10,usefulData);
 
@@ -260,40 +334,24 @@ public class HSLTransitData extends TransitData
 
         @Override
         public String getAgencyName () {
-            switch ((int) mAgency) {
-                case AGENCY_CT:
-                    return "Community Transit";
-                case AGENCY_KCM:
-                    return "King County Metro Transit";
-                case AGENCY_PT:
-                    return "Pierce Transit";
-                case AGENCY_ST:
-                    return "Sound Transit";
-            }
-            return "Unknown Agency";
+            if(mAgency==1)
+                return "Seutulippu";
+            return "Sisäinen lippu";
         }
 
         @Override
         public String getShortAgencyName () {
-            switch ((int) mAgency) {
-                case AGENCY_CT:
-                    return "Espoosta ostettu";
-                case AGENCY_KCM:
-                    return "KCM";
-                case AGENCY_PT:
-                    return "PT";
-                case AGENCY_ST:
-                    return "ST";
-            }
-            return "Helsingistä ostettu";
+           if(mAgency==1)
+                    return "Seutulippu";
+            return "Sisäinen lippu";
         }
 
         @Override
         public String getRouteName () {
             if(mArvo==1)
-            	return "Arvolippu";
+            	return "Arvolla";
             else
-           		return "Kausilippu";
+           		return "Kaudella";
         }
 
         @Override
@@ -350,7 +408,7 @@ public class HSLTransitData extends TransitData
         }
 
         private boolean isLink () {
-            return (mAgency == HSLTransitData.AGENCY_ST && mCoachNum > 10000);
+            return false;
         }
 
 		@Override
