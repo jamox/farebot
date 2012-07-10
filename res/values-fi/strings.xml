@@ -124,4 +124,14 @@
     <string name="hsl_previous_season_ticket">Viime kausilippu</string>
     <string name="hsl_season_ticket_price_was">Kausilipun hinta oli</string>
     <string name="hsl_you_last_used_this_ticket">Viimeksi käytit tätä kausilippua</string>
+    <string name="hsl_person">henkilö</string>
+    
+    <string name="hsl_value_ticket">Arvolippu</string>
+    <string name="hsl_value_ticket_bought_on">Arvolippu ostettu</string>
+    <string name="hsl_value_ticket_expires_on">Lippu vanhenee</string>
+    <string name="hsl_value_ticket_last_transfer">Viime vaihto</string>
+    <string name="hsl_value_ticket_last_sign">Viimeinen merkki</string>
+    <string name="hsl_value_ticket_price">Arvolipun hinta</string>
+    <string name="hsl_value_ticket_disco_group">Alennusryhmä</string>
+    <string name="hsl_value_ticket_pax">Ryhmän koko</string>
 </resources>
