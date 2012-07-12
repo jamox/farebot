@@ -138,4 +138,6 @@
     <string name="hsl_value_ticket_vehicle_number">Vehicle number</string>
     <string name="hsl_value_ticket_vehicle_type">Vehicle type</string>
     <string name="hsl_value_ticket_line_number">Line number</string>
+    
+    <string name="hsl_season_ticket">Season ticket</string>
 </resources>

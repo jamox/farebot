@@ -138,4 +138,6 @@
     <string name="hsl_value_ticket_vehicle_number">Kulkuneuvon numero</string>
     <string name="hsl_value_ticket_vehicle_type">Liikenneväline</string>
     <string name="hsl_value_ticket_line_number">Reittinumero</string>
+    
+    <string name="hsl_season_ticket">Kausikortti</string>
 </resources>

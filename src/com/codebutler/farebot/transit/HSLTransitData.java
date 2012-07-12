@@ -53,7 +53,7 @@ public class HSLTransitData extends TransitData
 
     private String        mSerialNumber;
     private double     mBalance;
-    private HSLTrip[] mTrips;
+    private List<HSLTrip> mTrips;
     private boolean mHasKausi;
 	private long mKausiStart;
 	private long mKausiEnd;
@@ -131,8 +131,8 @@ public class HSLTransitData extends TransitData
         mKausiJOREExt = parcel.readLong();
         
         
-        mTrips = new HSLTrip[parcel.readInt()];
-        parcel.readTypedArray(mTrips, HSLTrip.CREATOR);
+        mTrips = new ArrayList<HSLTrip>();
+        parcel.readTypedList(mTrips, HSLTrip.CREATOR);
     }
     public static long bitsToLong(int start, int len, byte[] data){
     	long ret=0;
@@ -175,6 +175,12 @@ public class HSLTransitData extends TransitData
         } catch (Exception ex) {
             throw new RuntimeException("Error parsing HSL trips", ex);
         }
+        int balanceIndex = -1;
+        for(int i=0;i<mTrips.size();++i)
+        	if(mTrips.get(i).mArvo==1){
+        		balanceIndex=i;
+        		break;
+        	}
         try {
             data = desfireCard.getApplication(0x1120ef).getFile(0x03).getData();
             mArvoMystery1 = bitsToLong(0,9,data);
@@ -192,18 +198,37 @@ public class HSLTransitData extends TransitData
             mArvoXfer = CardDateToTimestamp(bitsToLong(144,14,data), bitsToLong(158,11,data)); //68 price, 82 zone?
             
             mArvoVehicleNumber = bitsToLong(169,14,data);
-           // mTrips[0].mVehicleNumber = mArvoVehicleNumber;
             
             mArvoUnknown = bitsToLong(183, 2, data);
             
             mArvoLineJORE = bitsToLong(185, 14,data);
-            //mTrips[0].mLine = Long.toString(mArvoLineJORE).substring(1);
-            
             mArvoJOREExt = bitsToLong(199,5,data);
+            
+            if(balanceIndex>-1){
+            	mTrips.get(balanceIndex).mLine = Long.toString(mArvoLineJORE).substring(1);
+            	mTrips.get(balanceIndex).mVehicleNumber = mArvoVehicleNumber;
+            }else if(mArvoPurchase>2){
+            	HSLTrip t = new HSLTrip();
+            	t.mArvo = 1;
+            	t.mExpireTimestamp = mArvoExpire;
+            	t.mFare = mArvoPurchasePrice;
+            	t.mPax = mArvoPax;
+            	t.mTimestamp = mArvoPurchase;
+            	t.mVehicleNumber = mArvoVehicleNumber;
+            	t.mLine = Long.toString(mArvoLineJORE).substring(1);
+            	mTrips.add(t);
+            	Collections.sort(mTrips, new Trip.Comparator());
+            }
+            	
         } catch (Exception ex) {
             throw new RuntimeException("Error parsing HSL value data", ex);
         }
-
+        int seasonIndex = -1;
+        for(int i=0;i<mTrips.size();++i)
+        	if(mTrips.get(i).mArvo==0){
+        		seasonIndex=i;
+        		break;
+        	}
         try {
         	data = desfireCard.getApplication(0x1120ef).getFile(0x01).getData();
             
@@ -234,6 +259,21 @@ public class HSLTransitData extends TransitData
             //mTrips[0].mLine = Long.toString(mArvoLineJORE).substring(1);
             
             mKausiJOREExt = bitsToLong(247,5,data);
+            if(seasonIndex>-1){
+            	mTrips.get(seasonIndex).mVehicleNumber = mKausiVehicleNumber;
+            	mTrips.get(seasonIndex).mLine = Long.toString(mKausiLineJORE).substring(1);
+            }else if(mKausiVehicleNumber>0){
+            	HSLTrip t = new HSLTrip();
+            	t.mArvo = 0;
+            	t.mExpireTimestamp = mKausiPurchase;
+            	t.mFare = mKausiPurchasePrice;
+            	t.mPax = 1;
+            	t.mTimestamp = mKausiPurchase;
+            	t.mVehicleNumber = mKausiVehicleNumber;
+            	t.mLine = Long.toString(mKausiLineJORE).substring(1);
+            	mTrips.add(t);
+            	Collections.sort(mTrips, new Trip.Comparator());
+            }
         } catch (Exception ex) {
             throw new RuntimeException("Error parsing HSL kausi data", ex);
         }
@@ -264,6 +304,11 @@ public class HSLTransitData extends TransitData
     public String getCustomString () {
     	StringBuilder ret = new StringBuilder();
     	if(!mKausiNoData){
+        	ret.append(GR(R.string.hsl_season_ticket)).append(":\n");
+        	ret.append(GR(R.string.hsl_value_ticket_vehicle_number)).append(": ").append(mKausiVehicleNumber).append("\n");
+        	ret.append(GR(R.string.hsl_value_ticket_line_number)).append(": ").append(Long.toString(mKausiLineJORE).substring(1)).append("\n");
+        	ret.append("JORE extension").append(": ").append(mKausiJOREExt).append("\n");		
+
     		ret.append(GR(R.string.hsl_season_ticket_starts)).append(": ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiStart*1000.0));
 	    	ret.append("\n");
 	    	ret.append(GR(R.string.hsl_season_ticket_ends)).append(": ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiEnd*1000.0)); 
@@ -294,9 +339,6 @@ public class HSLTransitData extends TransitData
     	ret.append(GR(R.string.hsl_value_ticket_line_number)).append(": ").append(Long.toString(mArvoLineJORE).substring(1)).append("\n");
     	ret.append("JORE extension").append(": ").append(mArvoJOREExt).append("\n");
     	
-    	ret.append(GR(R.string.hsl_value_ticket_vehicle_number)).append(": ").append(mKausiVehicleNumber).append("\n");
-    	ret.append(GR(R.string.hsl_value_ticket_line_number)).append(": ").append(Long.toString(mKausiLineJORE).substring(1)).append("\n");
-    	ret.append("JORE extension").append(": ").append(mKausiJOREExt).append("\n");		
 
     	return ret.toString();
     }
@@ -307,7 +349,7 @@ public class HSLTransitData extends TransitData
 
     @Override
     public Trip[] getTrips () {
-        return mTrips;
+        return (HSLTrip[]) mTrips.toArray(new HSLTrip[mTrips.size()]);
     }
 
     @Override
@@ -316,25 +358,22 @@ public class HSLTransitData extends TransitData
         return ret;
     }
 
-    private HSLTrip[] parseTrips (DesfireCard card)
+    private List<HSLTrip> parseTrips (DesfireCard card)
     {
         DesfireFile file = card.getApplication(0x1120ef).getFile(0x04);
 
         if (file instanceof RecordDesfireFile) {
             RecordDesfireFile recordFile = (RecordDesfireFile) card.getApplication(0x1120ef).getFile(0x04);
 
-            List<Trip> result = new ArrayList<Trip>();
 
-            HSLTrip[] useLog = new HSLTrip[recordFile.getRecords().length];
-            for (int i = 0; i < useLog.length; i++) {
-                useLog[i] = new HSLTrip(recordFile.getRecords()[i]);
+            List<HSLTrip> useLog = new ArrayList<HSLTrip>();
+            for (int i = 0; i < recordFile.getRecords().length; i++) {
+                useLog.add(new HSLTrip(recordFile.getRecords()[i]));
             }
-
-            Arrays.sort(useLog, new Trip.Comparator());
-
+            Collections.sort(useLog, new Trip.Comparator());
             return useLog;
         }
-        return new HSLTrip[0];
+        return new ArrayList<HSLTrip>();
     }
 
     public void writeToParcel(Parcel parcel, int flags) {
@@ -361,8 +400,7 @@ public class HSLTransitData extends TransitData
         parcel.writeLong(mKausiLineJORE);
         parcel.writeLong(mKausiJOREExt);   
         if (mTrips != null) {
-            parcel.writeInt(mTrips.length);
-            parcel.writeTypedArray(mTrips, flags);
+            parcel.writeTypedList(mTrips);
         } else {
             parcel.writeInt(0);
         }
@@ -414,10 +452,10 @@ public class HSLTransitData extends TransitData
     {
         public String mLine;
 		public long mVehicleNumber;
-		private final long mTimestamp;
-        private final long mFare;
+		private long mTimestamp;
+        private long mFare;
         private final long mNewBalance;
-        private final long mArvo;
+        private long mArvo;
 		private long mExpireTimestamp;
 		private long mPax;
 
@@ -470,9 +508,16 @@ public class HSLTransitData extends TransitData
             mFare       = parcel.readLong();
             mPax 		= parcel.readLong();
             mNewBalance = parcel.readLong();
+            mLine= null;
+            mVehicleNumber = -1;
         }
 
-        @Override
+        public HSLTrip() {
+			mArvo=mTimestamp=mExpireTimestamp=mFare=mPax=mNewBalance=mVehicleNumber=-1;
+			mLine=null;
+		}
+
+		@Override
         public long getTimestamp() {
             return mTimestamp;
         }
