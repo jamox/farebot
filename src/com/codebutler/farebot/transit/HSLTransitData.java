@@ -79,6 +79,10 @@ public class HSLTransitData extends TransitData
 	private long mArvoVehicleNumber;
 	private long mArvoUnknown;
 	private long mArvoLineJORE;
+	private long mKausiVehicleNumber;
+	private long mKausiUnknown;
+	private long mKausiLineJORE;
+	private long mKausiJOREExt;
 
     private static final long EPOCH = 0x32C97ED0;
     private static final String[] regionNames= {"N/A", "Helsinki", "", "", "", "Seutu"};
@@ -121,6 +125,10 @@ public class HSLTransitData extends TransitData
         mArvoUnknown = parcel.readLong();
         mArvoLineJORE = parcel.readLong();
         mArvoJOREExt = parcel.readLong();
+        mKausiVehicleNumber = parcel.readLong();
+        mKausiUnknown = parcel.readLong();
+        mKausiLineJORE = parcel.readLong();
+        mKausiJOREExt = parcel.readLong();
         
         
         mTrips = new HSLTrip[parcel.readInt()];
@@ -163,6 +171,11 @@ public class HSLTransitData extends TransitData
             throw new RuntimeException("Error parsing HSL refills", ex);
         }
         try {
+            mTrips = parseTrips(desfireCard);
+        } catch (Exception ex) {
+            throw new RuntimeException("Error parsing HSL trips", ex);
+        }
+        try {
             data = desfireCard.getApplication(0x1120ef).getFile(0x03).getData();
             mArvoMystery1 = bitsToLong(0,9,data);
             mArvoDiscoGroup = bitsToLong(9,5,data);
@@ -179,20 +192,18 @@ public class HSLTransitData extends TransitData
             mArvoXfer = CardDateToTimestamp(bitsToLong(144,14,data), bitsToLong(158,11,data)); //68 price, 82 zone?
             
             mArvoVehicleNumber = bitsToLong(169,14,data);
+           // mTrips[0].mVehicleNumber = mArvoVehicleNumber;
             
             mArvoUnknown = bitsToLong(183, 2, data);
             
             mArvoLineJORE = bitsToLong(185, 14,data);
+            //mTrips[0].mLine = Long.toString(mArvoLineJORE).substring(1);
             
             mArvoJOREExt = bitsToLong(199,5,data);
         } catch (Exception ex) {
             throw new RuntimeException("Error parsing HSL value data", ex);
         }
-        try {
-            mTrips = parseTrips(desfireCard);
-        } catch (Exception ex) {
-            throw new RuntimeException("Error parsing HSL trips", ex);
-        }
+
         try {
         	data = desfireCard.getApplication(0x1120ef).getFile(0x01).getData();
             
@@ -214,6 +225,15 @@ public class HSLTransitData extends TransitData
             mKausiPurchase = CardDateToTimestamp(bitsToLong(110,14,data),bitsToLong(124,11,data));
             mKausiPurchasePrice = bitsToLong(149,15,data);
             mKausiLastUse = CardDateToTimestamp(bitsToLong(192,14,data),bitsToLong(206,11,data));
+            mKausiVehicleNumber = bitsToLong(217,14,data);
+            //mTrips[0].mVehicleNumber = mArvoVehicleNumber;
+            
+            mKausiUnknown = bitsToLong(231, 2, data);
+            
+            mKausiLineJORE = bitsToLong(233, 14,data);
+            //mTrips[0].mLine = Long.toString(mArvoLineJORE).substring(1);
+            
+            mKausiJOREExt = bitsToLong(247,5,data);
         } catch (Exception ex) {
             throw new RuntimeException("Error parsing HSL kausi data", ex);
         }
@@ -270,13 +290,13 @@ public class HSLTransitData extends TransitData
     	ret.append("Mystery1").append(": ").append(mArvoMystery1).append("\n");		
     	ret.append(GR(R.string.hsl_value_ticket_duration)).append(": ").append(mArvoDuration).append(" min\n");
     	ret.append(GR(R.string.hsl_value_ticket_vehicle_number)).append(": ").append(mArvoVehicleNumber).append("\n");
-    	
-    	
     	ret.append("Region").append(": ").append(regionNames[(int) mArvoRegional]).append("\n");
     	ret.append(GR(R.string.hsl_value_ticket_line_number)).append(": ").append(Long.toString(mArvoLineJORE).substring(1)).append("\n");
-    	ret.append("JORE extension").append(": ").append(mArvoJOREExt).append("\n");		
-    	if(ret.length()<2)
-    		return null;	    	
+    	ret.append("JORE extension").append(": ").append(mArvoJOREExt).append("\n");
+    	
+    	ret.append(GR(R.string.hsl_value_ticket_vehicle_number)).append(": ").append(mKausiVehicleNumber).append("\n");
+    	ret.append(GR(R.string.hsl_value_ticket_line_number)).append(": ").append(Long.toString(mKausiLineJORE).substring(1)).append("\n");
+    	ret.append("JORE extension").append(": ").append(mKausiJOREExt).append("\n");		
 
     	return ret.toString();
     }
@@ -336,7 +356,10 @@ public class HSLTransitData extends TransitData
         parcel.writeLong(mArvoUnknown);
         parcel.writeLong(mArvoLineJORE);
         parcel.writeLong(mArvoJOREExt);
-        
+        parcel.writeLong(mKausiVehicleNumber);
+        parcel.writeLong(mKausiUnknown);
+        parcel.writeLong(mKausiLineJORE);
+        parcel.writeLong(mKausiJOREExt);   
         if (mTrips != null) {
             parcel.writeInt(mTrips.length);
             parcel.writeTypedArray(mTrips, flags);
@@ -389,7 +412,9 @@ public class HSLTransitData extends TransitData
     }
     public static class HSLTrip extends Trip
     {
-        private final long mTimestamp;
+        public String mLine;
+		public long mVehicleNumber;
+		private final long mTimestamp;
         private final long mFare;
         private final long mNewBalance;
         private final long mArvo;
@@ -416,6 +441,8 @@ public class HSLTransitData extends TransitData
             mFare= bitsToLong(51,14,usefulData); 
             
             mPax = bitsToLong(65,5,usefulData);
+            mLine= null;
+            mVehicleNumber = -1;
             		
             mNewBalance=bitsToLong(70,20, usefulData);
 
@@ -452,12 +479,12 @@ public class HSLTransitData extends TransitData
 
         @Override
         public String getAgencyName () {
-        	if(mArvo!=1)
-        		return null;
-        	String valid = "\nvalid for " + ((this.mExpireTimestamp - this.mTimestamp) / 60) + "min";
-            //if(mAgency==1)
-            //    return GR(R.string.hsl_2zone_ticket) + valid;
-            return GR(R.string.hsl_1zone_ticket) + valid;
+            if(mArvo==1){
+            	String valid = "Valid for " + ((this.mExpireTimestamp - this.mTimestamp) / 60) + "min";
+            	return GR(R.string.hsl_balance_ticket) + ", " + mPax + " " + GR(R.string.hsl_person) + " "+valid;
+            }else
+           		return GR(R.string.hsl_pass_ticket) + ", " + mPax + " " + GR(R.string.hsl_person);
+        	
         }
 
         @Override
@@ -467,10 +494,9 @@ public class HSLTransitData extends TransitData
 
         @Override
         public String getRouteName () {
-            if(mArvo==1)
-            	return GR(R.string.hsl_balance_ticket) + ", " + mPax + " " + GR(R.string.hsl_person);
-            else
-           		return GR(R.string.hsl_pass_ticket) + ", " + mPax + " " + GR(R.string.hsl_person);
+        	if(mLine!=null)
+        		return mLine + ", " + mVehicleNumber;
+        	return "N/A";
         }
 
         @Override
@@ -508,6 +534,8 @@ public class HSLTransitData extends TransitData
         }
 
         public long getCoachNumber() {
+        	if(mVehicleNumber>-1)
+        		return mVehicleNumber;
             return mPax;
         }
 
