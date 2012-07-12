@@ -134,4 +134,8 @@
     <string name="hsl_value_ticket_price">Arvolipun hinta</string>
     <string name="hsl_value_ticket_disco_group">Alennusryhmä</string>
     <string name="hsl_value_ticket_pax">Ryhmän koko</string>
+    <string name="hsl_value_ticket_duration">Vaihtoaika</string>
+    <string name="hsl_value_ticket_vehicle_number">Kulkuneuvon numero</string>
+    <string name="hsl_value_ticket_vehicle_type">Liikenneväline</string>
+    <string name="hsl_value_ticket_line_number">Reittinumero</string>
 </resources>

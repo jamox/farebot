@@ -42,8 +42,11 @@ import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class HSLTransitData extends TransitData
 {
@@ -59,11 +62,9 @@ public class HSLTransitData extends TransitData
 	private long mKausiPurchasePrice;
 	private long mKausiLastUse;
 	private long mKausiPurchase;
-	private long mLastRefillTime;
 	private HSLRefill mLastRefill;
 	
 	private boolean mKausiNoData;
-	private long mLastRefillAmount;
 	private long mArvoExit;
 	private long mArvoPurchase;
 	private long mArvoExpire;
@@ -72,10 +73,20 @@ public class HSLTransitData extends TransitData
 	private long mArvoXfer;
 	private long mArvoDiscoGroup;
 	private long mArvoMystery1;
-	private long mArvoMystery2;
-	private long mArvoMystery3;
+	private long mArvoDuration;
+	private long mArvoRegional;
+	private long mArvoJOREExt;
+	private long mArvoVehicleNumber;
+	private long mArvoUnknown;
+	private long mArvoLineJORE;
 
     private static final long EPOCH = 0x32C97ED0;
+    private static final String[] regionNames= {"N/A", "Helsinki", "", "", "", "Seutu"};
+/*    private static final Map<Long,String> vehicleNames =  Collections.unmodifiableMap(new HashMap<Long, String>() {{ 
+        put(1L, "Metro");
+        put(18L, "Bus");
+        put(16L, "Tram");
+    }});*/
     
     public static boolean check (Card card)
     {
@@ -97,8 +108,8 @@ public class HSLTransitData extends TransitData
         mBalance      = parcel.readDouble();
         
         mArvoMystery1 = parcel.readLong();
-        mArvoMystery2 = parcel.readLong();
-        mArvoMystery3 = parcel.readLong();
+        mArvoDuration = parcel.readLong();
+        mArvoRegional = parcel.readLong();
         mArvoExit = parcel.readLong();
         mArvoPurchasePrice = parcel.readLong();
         mArvoDiscoGroup = parcel.readLong();
@@ -106,6 +117,10 @@ public class HSLTransitData extends TransitData
         mArvoExpire = parcel.readLong();
         mArvoPax = parcel.readLong();
         mArvoXfer = parcel.readLong();
+        mArvoVehicleNumber = parcel.readLong();
+        mArvoUnknown = parcel.readLong();
+        mArvoLineJORE = parcel.readLong();
+        mArvoJOREExt = parcel.readLong();
         
         
         mTrips = new HSLTrip[parcel.readInt()];
@@ -149,18 +164,27 @@ public class HSLTransitData extends TransitData
         }
         try {
             data = desfireCard.getApplication(0x1120ef).getFile(0x03).getData();
-            mArvoMystery1 = bitsToLong(0,14,data);
-            mArvoMystery2 = bitsToLong(14,11,data);
-            mArvoMystery3 = bitsToLong(25, 7, data);
+            mArvoMystery1 = bitsToLong(0,9,data);
+            mArvoDiscoGroup = bitsToLong(9,5,data);
+            mArvoDuration = bitsToLong(14,13,data);
+            mArvoRegional = bitsToLong(27, 5, data);
             
             mArvoExit = CardDateToTimestamp(bitsToLong(32,14,data), bitsToLong(46,11,data)); 
             mArvoPurchasePrice = bitsToLong(68,14,data);
-            mArvoDiscoGroup = bitsToLong(82, 6,data);
+            //mArvoDiscoGroup = bitsToLong(82, 6,data);
             mArvoPurchase = CardDateToTimestamp(bitsToLong(88,14,data), bitsToLong(102,11,data)); //68 price, 82 zone?
             mArvoExpire = CardDateToTimestamp(bitsToLong(113,14,data), bitsToLong(127,11,data)); //68 price, 82 zone?
             mArvoPax = bitsToLong(138,6,data);
            
             mArvoXfer = CardDateToTimestamp(bitsToLong(144,14,data), bitsToLong(158,11,data)); //68 price, 82 zone?
+            
+            mArvoVehicleNumber = bitsToLong(169,14,data);
+            
+            mArvoUnknown = bitsToLong(183, 2, data);
+            
+            mArvoLineJORE = bitsToLong(185, 14,data);
+            
+            mArvoJOREExt = bitsToLong(199,5,data);
         } catch (Exception ex) {
             throw new RuntimeException("Error parsing HSL value data", ex);
         }
@@ -244,9 +268,13 @@ public class HSLTransitData extends TransitData
     	ret.append(GR(R.string.hsl_value_ticket_disco_group)).append(": ").append(mArvoDiscoGroup).append("\n");
     	ret.append(GR(R.string.hsl_value_ticket_pax)).append(": ").append(mArvoPax).append("\n");
     	ret.append("Mystery1").append(": ").append(mArvoMystery1).append("\n");		
-    	ret.append("Mystery2").append(": ").append(mArvoMystery2).append("\n");		
-    	ret.append("Mystery3").append(": ").append(mArvoMystery3).append("\n");		
+    	ret.append(GR(R.string.hsl_value_ticket_duration)).append(": ").append(mArvoDuration).append(" min\n");
+    	ret.append(GR(R.string.hsl_value_ticket_vehicle_number)).append(": ").append(mArvoVehicleNumber).append("\n");
     	
+    	
+    	ret.append("Region").append(": ").append(regionNames[(int) mArvoRegional]).append("\n");
+    	ret.append(GR(R.string.hsl_value_ticket_line_number)).append(": ").append(Long.toString(mArvoLineJORE).substring(1)).append("\n");
+    	ret.append("JORE extension").append(": ").append(mArvoJOREExt).append("\n");		
     	if(ret.length()<2)
     		return null;	    	
 
@@ -294,8 +322,8 @@ public class HSLTransitData extends TransitData
         parcel.writeDouble(mBalance);
         
         parcel.writeLong(mArvoMystery1);
-        parcel.writeLong(mArvoMystery2);
-        parcel.writeLong(mArvoMystery3);
+        parcel.writeLong(mArvoDuration);
+        parcel.writeLong(mArvoRegional);
 
         parcel.writeLong(mArvoExit);
         parcel.writeLong(mArvoPurchasePrice);
@@ -304,6 +332,10 @@ public class HSLTransitData extends TransitData
         parcel.writeLong(mArvoExpire);
         parcel.writeLong(mArvoPax);
         parcel.writeLong(mArvoXfer);
+        parcel.writeLong(mArvoVehicleNumber);
+        parcel.writeLong(mArvoUnknown);
+        parcel.writeLong(mArvoLineJORE);
+        parcel.writeLong(mArvoJOREExt);
         
         if (mTrips != null) {
             parcel.writeInt(mTrips.length);

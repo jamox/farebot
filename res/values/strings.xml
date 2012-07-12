@@ -134,4 +134,8 @@
     <string name="hsl_value_ticket_price">Price of value ticket</string>
     <string name="hsl_value_ticket_disco_group">Discount group</string>
     <string name="hsl_value_ticket_pax">Group size</string>
+    <string name="hsl_value_ticket_duration">Ticket validity</string>
+    <string name="hsl_value_ticket_vehicle_number">Vehicle number</string>
+    <string name="hsl_value_ticket_vehicle_type">Vehicle type</string>
+    <string name="hsl_value_ticket_line_number">Line number</string>
 </resources>
