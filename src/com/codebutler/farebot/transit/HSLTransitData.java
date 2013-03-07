@@ -34,8 +34,8 @@ import com.codebutler.farebot.Utils;
 import com.codebutler.farebot.mifare.Card;
 import com.codebutler.farebot.mifare.DesfireCard;
 import com.codebutler.farebot.mifare.DesfireFile;
-import com.codebutler.farebot.mifare.DesfireFile.RecordDesfireFile;
 import com.codebutler.farebot.mifare.DesfireRecord;
+import com.codebutler.farebot.mifare.DesfireFile.RecordDesfireFile;
 
 import java.text.DateFormat;
 import java.text.NumberFormat;
@@ -83,9 +83,14 @@ public class HSLTransitData extends TransitData
 	private long mKausiUnknown;
 	private long mKausiLineJORE;
 	private long mKausiJOREExt;
+	private long mArvoDirection;
+	private long mKausiDirection;
 
     private static final long EPOCH = 0x32C97ED0;
-    private static final String[] regionNames= {"N/A", "Helsinki", "", "", "", "Seutu"};
+    private static final String[] regionNames= {"N/A", "Helsinki", "Espoo", "Vantaa", "Koko alue", "Seutu","","","","",  // 0-9
+    											"","","","","","","","","","", // 10-19
+    											"","","","","","","","","","", // 20-29
+    											"","","","","","","","","",""}; // 30-39
 /*    private static final Map<Long,String> vehicleNames =  Collections.unmodifiableMap(new HashMap<Long, String>() {{ 
         put(1L, "Metro");
         put(18L, "Bus");
@@ -125,10 +130,12 @@ public class HSLTransitData extends TransitData
         mArvoUnknown = parcel.readLong();
         mArvoLineJORE = parcel.readLong();
         mArvoJOREExt = parcel.readLong();
+        mArvoDirection = parcel.readLong();
         mKausiVehicleNumber = parcel.readLong();
         mKausiUnknown = parcel.readLong();
         mKausiLineJORE = parcel.readLong();
         mKausiJOREExt = parcel.readLong();
+        mKausiDirection = parcel.readLong();
         
         
         mTrips = new ArrayList<HSLTrip>();
@@ -150,6 +157,15 @@ public class HSLTransitData extends TransitData
     	}
     	return ret;
     }
+	public static byte[] hexStringToByteArray(String s) {
+	    int len = s.length();
+	    byte[] data = new byte[len / 2];
+	    for (int i = 0; i < len; i += 2) {
+	        data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+	                             + Character.digit(s.charAt(i+1), 16));
+	    }
+	    return data;
+	}
     public HSLTransitData (Card card)
     {
         DesfireCard desfireCard = (DesfireCard) card;
@@ -202,10 +218,11 @@ public class HSLTransitData extends TransitData
             mArvoUnknown = bitsToLong(183, 2, data);
             
             mArvoLineJORE = bitsToLong(185, 14,data);
-            mArvoJOREExt = bitsToLong(199,5,data);
+            mArvoJOREExt = bitsToLong(199,4,data);
+            mArvoDirection = bitsToLong(203,1,data);
             
             if(balanceIndex>-1){
-            	mTrips.get(balanceIndex).mLine = Long.toString(mArvoLineJORE).substring(1);
+            	mTrips.get(balanceIndex).mLine = Long.toString(mArvoLineJORE);
             	mTrips.get(balanceIndex).mVehicleNumber = mArvoVehicleNumber;
             }else if(mArvoPurchase>2){
             	HSLTrip t = new HSLTrip();
@@ -215,7 +232,7 @@ public class HSLTransitData extends TransitData
             	t.mPax = mArvoPax;
             	t.mTimestamp = mArvoPurchase;
             	t.mVehicleNumber = mArvoVehicleNumber;
-            	t.mLine = Long.toString(mArvoLineJORE).substring(1);
+            	t.mLine = Long.toString(mArvoLineJORE);
             	mTrips.add(t);
             	Collections.sort(mTrips, new Trip.Comparator());
             }
@@ -258,10 +275,11 @@ public class HSLTransitData extends TransitData
             mKausiLineJORE = bitsToLong(233, 14,data);
             //mTrips[0].mLine = Long.toString(mArvoLineJORE).substring(1);
             
-            mKausiJOREExt = bitsToLong(247,5,data);
+            mKausiJOREExt = bitsToLong(247,4,data);
+            mKausiDirection = bitsToLong(241,1,data);
             if(seasonIndex>-1){
             	mTrips.get(seasonIndex).mVehicleNumber = mKausiVehicleNumber;
-            	mTrips.get(seasonIndex).mLine = Long.toString(mKausiLineJORE).substring(1);
+            	mTrips.get(seasonIndex).mLine = Long.toString(mKausiLineJORE);
             }else if(mKausiVehicleNumber>0){
             	HSLTrip t = new HSLTrip();
             	t.mArvo = 0;
@@ -270,7 +288,7 @@ public class HSLTransitData extends TransitData
             	t.mPax = 1;
             	t.mTimestamp = mKausiPurchase;
             	t.mVehicleNumber = mKausiVehicleNumber;
-            	t.mLine = Long.toString(mKausiLineJORE).substring(1);
+            	t.mLine = Long.toString(mKausiLineJORE);
             	mTrips.add(t);
             	Collections.sort(mTrips, new Trip.Comparator());
             }
@@ -307,7 +325,8 @@ public class HSLTransitData extends TransitData
         	ret.append(GR(R.string.hsl_season_ticket)).append(":\n");
         	ret.append(GR(R.string.hsl_value_ticket_vehicle_number)).append(": ").append(mKausiVehicleNumber).append("\n");
         	ret.append(GR(R.string.hsl_value_ticket_line_number)).append(": ").append(Long.toString(mKausiLineJORE).substring(1)).append("\n");
-        	ret.append("JORE extension").append(": ").append(mKausiJOREExt).append("\n");		
+        	ret.append("JORE extension").append(": ").append(mKausiJOREExt).append("\n");
+        	ret.append("Direction").append(": ").append(mKausiDirection).append("\n");
 
     		ret.append(GR(R.string.hsl_season_ticket_starts)).append(": ").append(SimpleDateFormat.getDateInstance(DateFormat.SHORT).format(mKausiStart*1000.0));
 	    	ret.append("\n");
@@ -338,7 +357,7 @@ public class HSLTransitData extends TransitData
     	ret.append("Region").append(": ").append(regionNames[(int) mArvoRegional]).append("\n");
     	ret.append(GR(R.string.hsl_value_ticket_line_number)).append(": ").append(Long.toString(mArvoLineJORE).substring(1)).append("\n");
     	ret.append("JORE extension").append(": ").append(mArvoJOREExt).append("\n");
-    	
+    	ret.append("Direction").append(": ").append(mArvoDirection).append("\n");
 
     	return ret.toString();
     }
@@ -395,10 +414,12 @@ public class HSLTransitData extends TransitData
         parcel.writeLong(mArvoUnknown);
         parcel.writeLong(mArvoLineJORE);
         parcel.writeLong(mArvoJOREExt);
+        parcel.writeLong(mArvoDirection);
         parcel.writeLong(mKausiVehicleNumber);
         parcel.writeLong(mKausiUnknown);
         parcel.writeLong(mKausiLineJORE);
-        parcel.writeLong(mKausiJOREExt);   
+        parcel.writeLong(mKausiJOREExt);
+        parcel.writeLong(mKausiDirection);   
         if (mTrips != null) {
             parcel.writeTypedList(mTrips);
         } else {
@@ -540,7 +561,7 @@ public class HSLTransitData extends TransitData
         @Override
         public String getRouteName () {
         	if(mLine!=null)
-        		return mLine + ", " + mVehicleNumber;
+        		return mLine.substring(1) + ", " + mVehicleNumber;
         	return "N/A";
         }
 
@@ -575,7 +596,18 @@ public class HSLTransitData extends TransitData
 
         @Override
         public Mode getMode() {
-            return (isLink()) ? Mode.METRO : Mode.BUS;
+        	if(mLine!=null){
+        		if(mLine.equals("1300"))
+        			return Mode.METRO;
+        		if(mLine.equals("1019"))
+        			return Mode.FERRY;
+        		if(mLine.startsWith("100") || mLine.equals("1010"))
+        			return Mode.TRAM;
+        		if(mLine.startsWith("3"))
+        			return Mode.TRAIN;
+        		return Mode.BUS;
+        	}else
+        		return Mode.BUS;
         }
 
         public long getCoachNumber() {
